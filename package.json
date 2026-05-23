@@ -1,0 +1,14 @@
+{
+  "name": "nexflow",
+  "version": "0.1.0",
+  "description": "Workflow automation platform",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "keywords": ["workflow", "automation", "integration"],
+  "author": "redfieldcapt-cell",
+  "license": "MIT"
+}
