@@ -1,0 +1,38 @@
+name: GitHub CI Pipeline
+description: Run tests when code is pushed
+
+trigger:
+  type: event
+  source: github
+  event: push
+  filter:
+    branch: main
+
+steps:
+  - name: Checkout code
+    action: github.clone
+    repo: ${{ event.repository.full_name }}
+    ref: ${{ event.after }}
+    
+  - name: Install dependencies
+    action: shell.exec
+    command: npm install
+    
+  - name: Run tests
+    action: shell.exec
+    command: npm test
+    
+  - name: Report status
+    action: github.create-status
+    repo: ${{ event.repository.full_name }}
+    sha: ${{ event.after }}
+    state: ${{ steps.run-tests.success ? 'success' : 'failure' }}
+    description: "Tests completed"
+    
+  - name: Notify team
+    action: slack.send-message
+    channel: "#ci"
+    message: |
+      CI Pipeline ${{ steps.run-tests.success ? '✅' : '❌' }}
+      Repo: ${{ event.repository.full_name }}
+      Commit: ${{ event.head_commit.message }}
