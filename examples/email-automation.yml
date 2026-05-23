@@ -1,0 +1,48 @@
+name: Welcome Email Campaign
+description: Send welcome emails to new users
+
+trigger:
+  type: event
+  source: webhook
+  path: /user-signup
+
+steps:
+  - name: Validate user data
+    action: custom
+    script: ./scripts/validate-user.js
+    params:
+      user: ${{ event.body }}
+    
+  - name: Create user record
+    action: postgres.insert
+    connection: ${{ secrets.DB }}
+    table: users
+    data:
+      email: ${{ event.body.email }}
+      name: ${{ event.body.name }}
+      created_at: ${{ now() }}
+    
+  - name: Send welcome email
+    action: email.send
+    to: ${{ event.body.email }}
+    from: welcome@nexflow.io
+    subject: "Welcome to Nexflow!"
+    template: welcome-email
+    variables:
+      name: ${{ event.body.name }}
+    
+  - name: Add to mailing list
+    action: http.post
+    url: https://api.mailchimp.com/3.0/lists/LIST_ID/members
+    headers:
+      Authorization: Bearer ${{ secrets.MAILCHIMP_KEY }}
+    body:
+      email_address: ${{ event.body.email }}
+      status: subscribed
+    
+  - name: Track conversion
+    action: analytics.track
+    event: user_signup
+    properties:
+      email: ${{ event.body.email }}
+      source: ${{ event.body.source }}
