@@ -1,0 +1,37 @@
+name: Database Sync
+description: Sync data between systems
+
+trigger:
+  type: schedule
+  cron: "*/15 * * * *"  # Every 15 minutes
+
+steps:
+  - name: Fetch from source
+    action: postgres.query
+    connection: ${{ secrets.SOURCE_DB }}
+    query: |
+      SELECT * FROM users 
+      WHERE updated_at > ${{ state.last_sync }}
+      ORDER BY updated_at ASC
+    
+  - name: Transform records
+    action: custom
+    script: ./scripts/transform-users.js
+    params:
+      records: ${{ steps.fetch-from-source.output }}
+    
+  - name: Upsert to destination
+    action: postgres.upsert
+    connection: ${{ secrets.DEST_DB }}
+    table: users
+    data: ${{ steps.transform-records.output }}
+    conflict_target: id
+    
+  - name: Update sync timestamp
+    action: state.set
+    key: last_sync
+    value: ${{ now() }}
+    
+  - name: Log summary
+    action: log
+    message: "Synced ${{ steps.transform-records.output.length }} records"
